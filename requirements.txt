@@ -1,5 +1,4 @@
 gymnasium
 mujoco
 numpy
-torch
 gymnasium[mujoco]

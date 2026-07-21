@@ -19,7 +19,7 @@ class Arm_Net(nn.Module):
         means = self.output(l1)
         return means, torch.exp(self.SD)
 
-def run_episode(net, env):
+def run_episode(net, env) -> list:
     observation, info = env.reset()
     log_probabilities = []
     rewards = []
@@ -34,15 +34,34 @@ def run_episode(net, env):
 
         observation, reward, terminated, truncated, info = env.step(action)
         log_probabilities.append(log_prob.sum()) 
-        rewards.append(reward)
+        rewards.append(torch.tensor(reward))
         episode_over = terminated or truncated
-        time.sleep(.5)
+        time.sleep(.01)
+    return log_probabilities, rewards
+
+def accumulate_rewards(rewards):
+    accumulated_rewards = []
+    for i in range(len(rewards)):
+        accumulated_rewards.append(sum(rewards[i:]))
+    return accumulated_rewards
+
+def update_model_weights(log_probabilities: list, rewards: list, optimizer, net):
+    accumulated_rewards = accumulate_rewards(rewards)
+    print(type(log_probabilities[0]), type(log_probabilities), type(accumulated_rewards[0]), type(accumulated_rewards))
+    loss = -(torch.stack(log_probabilities) * torch.stack(accumulated_rewards)).sum()
+    net.zero_grad()
+    loss.backward()
+    optimizer.step()
 
 def main():
     env = gym.make("Pusher", render_mode="human")
     net = Arm_Net(env.observation_space.shape[0], env.action_space.shape[0])
-    run_episode(net=net, env=env)
-    
+    optimizer = torch.optim.Adam(net.parameters())
+    for _ in range(1000):
+        log_probabilities, rewards = run_episode(net=net, env=env)
+        update_model_weights(log_probabilities=log_probabilities, rewards=rewards, optimizer=optimizer, net=net)
+
+    env.close()
 
 if __name__ == "__main__":
     main()

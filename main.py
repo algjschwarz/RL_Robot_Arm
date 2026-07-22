@@ -46,9 +46,9 @@ def accumulate_rewards(rewards):
     return accumulated_rewards
 
 def update_model_weights(log_probabilities: list, rewards: list, optimizer, net):
-    accumulated_rewards = accumulate_rewards(rewards)
-    print(type(log_probabilities[0]), type(log_probabilities), type(accumulated_rewards[0]), type(accumulated_rewards))
-    loss = -(torch.stack(log_probabilities) * torch.stack(accumulated_rewards)).sum()
+    accumulated_rewards = torch.stack(accumulate_rewards(rewards))
+    accumulated_rewards = accumulated_rewards - accumulated_rewards.mean()
+    loss = -(torch.stack(log_probabilities) * accumulated_rewards).sum()
     net.zero_grad()
     loss.backward()
     optimizer.step()
@@ -57,7 +57,8 @@ def main():
     env = gym.make("Pusher", render_mode="human")
     net = Arm_Net(env.observation_space.shape[0], env.action_space.shape[0])
     optimizer = torch.optim.Adam(net.parameters())
-    for _ in range(1000):
+    for i in range(1000):
+        print(f"Generation {i}")
         log_probabilities, rewards = run_episode(net=net, env=env)
         update_model_weights(log_probabilities=log_probabilities, rewards=rewards, optimizer=optimizer, net=net)
 

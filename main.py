@@ -36,18 +36,15 @@ def run_episode(net, env) -> list:
         log_probabilities.append(log_prob.sum()) 
         rewards.append(torch.tensor(reward))
         episode_over = terminated or truncated
-        time.sleep(.001)
+        #time.sleep(.001)
     return log_probabilities, rewards
 
-def accumulate_rewards(rewards):
-    accumulated_rewards = []
-    for i in range(len(rewards)):
-        slice = rewards[i:]
-        reward = 0
-        for j in range(len(slice)):
-            discount = 0.99**j
-            reward += slice[j] * discount
-        accumulated_rewards.append(reward)
+def accumulate_rewards(rewards, gamma=0.99):
+    accumulated_rewards = [0] * len(rewards)
+    running = 0
+    for i in reversed(range(len(rewards))):
+        running = rewards[i] + gamma * running
+        accumulated_rewards[i] = running
     return accumulated_rewards
 
 def calculate_mean_reward_for_timestep(episodes: list) -> list:
@@ -63,7 +60,7 @@ def calculate_mean_reward_for_timestep(episodes: list) -> list:
     return mean_reward_for_timestep
 
 def main():
-    env = gym.make("Pusher", render_mode="human")
+    env = gym.make("Pusher")
     net = Arm_Net(env.observation_space.shape[0], env.action_space.shape[0])
     optimizer = torch.optim.Adam(net.parameters())
     episode_length = 50
@@ -83,6 +80,8 @@ def main():
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        avg_total = sum(sum(r).item() for r in rewards_episodes) / episode_length
+        print(f"Generation {i}  avg reward {avg_total:.1f}")
 
     env.close()
 

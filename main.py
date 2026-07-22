@@ -36,31 +36,53 @@ def run_episode(net, env) -> list:
         log_probabilities.append(log_prob.sum()) 
         rewards.append(torch.tensor(reward))
         episode_over = terminated or truncated
-        time.sleep(.01)
+        time.sleep(.001)
     return log_probabilities, rewards
 
 def accumulate_rewards(rewards):
     accumulated_rewards = []
     for i in range(len(rewards)):
-        accumulated_rewards.append(sum(rewards[i:]))
+        slice = rewards[i:]
+        reward = 0
+        for j in range(len(slice)):
+            discount = 0.99**j
+            reward += slice[j] * discount
+        accumulated_rewards.append(reward)
     return accumulated_rewards
 
-def update_model_weights(log_probabilities: list, rewards: list, optimizer, net):
-    accumulated_rewards = torch.stack(accumulate_rewards(rewards))
-    accumulated_rewards = accumulated_rewards - accumulated_rewards.mean()
-    loss = -(torch.stack(log_probabilities) * accumulated_rewards).sum()
-    net.zero_grad()
-    loss.backward()
-    optimizer.step()
+def calculate_mean_reward_for_timestep(episodes: list) -> list:
+    returns = [accumulate_rewards(e) for e in episodes]
+    mean_reward_for_timestep = []
+    len_of_episode = len(returns[0])
+    for i in range(len_of_episode):
+        value = 0 
+        for episode in returns:
+            value += episode[i]
+        mean = torch.tensor(value / len(returns))
+        mean_reward_for_timestep.append(mean)
+    return mean_reward_for_timestep
 
 def main():
     env = gym.make("Pusher", render_mode="human")
     net = Arm_Net(env.observation_space.shape[0], env.action_space.shape[0])
     optimizer = torch.optim.Adam(net.parameters())
+    episode_length = 50
     for i in range(1000):
         print(f"Generation {i}")
-        log_probabilities, rewards = run_episode(net=net, env=env)
-        update_model_weights(log_probabilities=log_probabilities, rewards=rewards, optimizer=optimizer, net=net)
+        log_probabilities_episodes, rewards_episodes = [], []
+        for j in range(episode_length):
+            log_probabilities, rewards = run_episode(net=net, env=env)
+            log_probabilities_episodes.append(log_probabilities)
+            rewards_episodes.append(rewards)
+        mean_reward_for_timestep = torch.stack(calculate_mean_reward_for_timestep(rewards_episodes))
+        loss = 0
+        for j in range(episode_length):
+            returns = torch.stack(accumulate_rewards(rewards_episodes[j]))
+            advantage = returns - mean_reward_for_timestep.detach()
+            loss = loss - (torch.stack(log_probabilities_episodes[j]) * advantage).sum()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
     env.close()
 

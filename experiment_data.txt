@@ -1,0 +1,6 @@
+#-> -52.3 loss: gamma = 0.95, lr = default, episode_length = 25, generations = 1000
+#-> -55.9 loss: gamma = 0.99, lr = default, episode_length = 25, generations = 1000
+#-> Loss(started at: -134.7 Ended at: -57.2) Gamma = 0.95, lr = default, episode_length = 5, generations = 1000
+#-> Loss(started at: -133.8 Ended at: -64.1) Run_Highest(Gen=985, Loss=-56.99) Gamma = 0.95, lr = default, episode_length = 3, generations = 1000
+#-> Loss(started at: -135.8 Ended at: -58.5) Run_Highest(Gen=995, Loss=-55.84) Gamma = 0.95, lr = default, episode_length = 5, generations = 1000
+#-> Loss(started at: -135.0 Ended at: -40.8) Run_Highest(Gen=2622, Loss=-37.48) Gamma = 0.95, lr = default, episode_length = 10, generations = 3000
